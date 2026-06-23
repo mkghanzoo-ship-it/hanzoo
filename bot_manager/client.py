@@ -9,6 +9,8 @@ import discord
 from discord import Client, Intents, TextChannel, Message
 from discord.errors import LoginFailure
 
+from bot_manager import permissions
+
 
 @dataclass
 class BotConfig:
@@ -308,16 +310,8 @@ class BotManagerBotClient:
         command = parts[0].lower()
         args = parts[1:]
         
-        # Check if user is a trusted admin - if list is not empty, user must be in it
-        # If list is empty, deny all commands (restrict by default)
-        if len(self.config.trusted_admins) == 0:
-            await self._send_to_channel(
-                f"❌ {message.author.mention}, no trusted admins configured. Commands are disabled.",
-                message.channel if isinstance(message.channel, TextChannel) else None
-            )
-            return
-        
-        if message.author.id not in self.config.trusted_admins:
+        # Check if user has permission to use commands
+        if not permissions.is_trusted_admin(message.author.id):
             await self._send_to_channel(
                 f"❌ {message.author.mention}, you don't have permission to use bot commands.",
                 message.channel if isinstance(message.channel, TextChannel) else None
@@ -352,5 +346,55 @@ class BotManagerBotClient:
                 await self._send_to_channel("❌ Usage: !spam <count> <message>", command_channel)
         elif command == "status":
             await self._send_to_channel(self.status(), command_channel)
+        elif command == "trust":
+            # Owner-only command for adding trusted admins
+            if not permissions.is_owner(message.author.id):
+                await self._send_to_channel(
+                    f"❌ {message.author.mention}, only the owner can manage trusted admins.",
+                    command_channel
+                )
+                return
+            if len(args) != 1:
+                await self._send_to_channel("❌ Usage: !trust <user_id>", command_channel)
+                return
+            try:
+                user_id = int(args[0])
+                success, result_msg = permissions.add_trusted_admin(user_id)
+                await self._send_to_channel(result_msg, command_channel)
+            except ValueError:
+                await self._send_to_channel("❌ Invalid user ID. Must be numeric.", command_channel)
+        elif command == "untrust":
+            # Owner-only command for removing trusted admins
+            if not permissions.is_owner(message.author.id):
+                await self._send_to_channel(
+                    f"❌ {message.author.mention}, only the owner can manage trusted admins.",
+                    command_channel
+                )
+                return
+            if len(args) != 1:
+                await self._send_to_channel("❌ Usage: !untrust <user_id>", command_channel)
+                return
+            try:
+                user_id = int(args[0])
+                success, result_msg = permissions.remove_trusted_admin(user_id)
+                await self._send_to_channel(result_msg, command_channel)
+            except ValueError:
+                await self._send_to_channel("❌ Invalid user ID. Must be numeric.", command_channel)
+        elif command == "trusted":
+            # Owner-only command to view trusted admins
+            if not permissions.is_owner(message.author.id):
+                await self._send_to_channel(
+                    f"❌ {message.author.mention}, only the owner can view trusted admins.",
+                    command_channel
+                )
+                return
+            admins = permissions.get_trusted_admins_list()
+            owner_id = permissions.get_owner_id()
+            if not admins:
+                msg = f"Owner: <@{owner_id}>\nNo trusted admins currently set."
+            else:
+                admin_mentions = "\n".join([f"  • <@{admin_id}>" for admin_id in admins])
+                msg = f"Owner: <@{owner_id}>\nTrusted Admins:\n{admin_mentions}"
+            await self._send_to_channel(msg, command_channel)
         else:
             await self._send_to_channel(f"❌ Unknown command: {command}. Type !help for available commands.", command_channel)

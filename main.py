@@ -9,6 +9,7 @@ from pathlib import Path
 
 from bot_manager.client import BotConfig, BotManagerBotClient
 from bot_manager.command_handler import CommandHandler
+from bot_manager import permissions
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config" / "bots.json"
@@ -92,6 +93,11 @@ async def main() -> None:
         Path("config").mkdir(exist_ok=True)
         shutil.copy("bots.json", "config/bots.json")
         logging.info("Copied bots.json from root to config/bots.json")
+
+    # Initialize permission system
+    trusted_admins_path = ROOT / "config" / "trusted_admins.json"
+    permissions.initialize_permissions(trusted_admins_path)
+    logging.info("Permission system initialized.")
 
     bot_configs = load_bot_configs(CONFIG_PATH)
     bots = [BotManagerBotClient(config) for config in bot_configs]
