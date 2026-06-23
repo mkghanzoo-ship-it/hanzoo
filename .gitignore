@@ -1,5 +1,6 @@
 # Config files with sensitive data
 config/bots.json
+config/trusted_admins.json
 
 # Python
 __pycache__/
