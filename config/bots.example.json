@@ -1,0 +1,22 @@
+[
+  {
+    "username": "alpha_bot",
+    "password": "your-password-here",
+    "token": "your-discord-token-here",
+    "server": "game.example.net",
+    "present": null,
+    "display_name": "AlphaBot",
+    "trusted_admins": [123456789, 987654321],
+    "command_handler": true
+  },
+  {
+    "username": "bravo_bot",
+    "password": "your-password-here",
+    "token": "your-discord-token-here",
+    "server": "game.example.net",
+    "present": null,
+    "display_name": "BravoBot",
+    "trusted_admins": [123456789, 987654321],
+    "command_handler": false
+  }
+]

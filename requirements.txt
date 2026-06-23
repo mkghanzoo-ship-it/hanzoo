@@ -1,0 +1,2 @@
+# Python 3.11+ is required for this project
+discord.py>=2.3.0
