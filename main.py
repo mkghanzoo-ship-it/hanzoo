@@ -42,9 +42,6 @@ def load_bot_configs(config_path: Path) -> list[BotConfig]:
 
     configs: list[BotConfig] = []
     for entry in raw_configs:
-        trusted_admins = entry.get("trusted_admins", [])
-        if trusted_admins is None:
-            trusted_admins = []
         configs.append(
             BotConfig(
                 username=str(entry.get("username", "")),
@@ -52,7 +49,6 @@ def load_bot_configs(config_path: Path) -> list[BotConfig]:
                 token=str(entry.get("token", "")),
                 present=entry.get("present"),
                 display_name=str(entry.get("display_name", "Unnamed Bot")),
-                trusted_admins=trusted_admins,
                 command_handler=entry.get("command_handler", False),
             )
         )
