@@ -310,17 +310,72 @@ class BotManagerBotClient:
         command = parts[0].lower()
         args = parts[1:]
         
-        # Check if user has permission to use commands
-        if not permissions.is_trusted_admin(message.author.id):
-            await self._send_to_channel(
-                f"❌ {message.author.mention}, you don't have permission to use bot commands.",
-                message.channel if isinstance(message.channel, TextChannel) else None
-            )
-            return
-        
         # Get the channel where the message was sent
         command_channel = message.channel if isinstance(message.channel, TextChannel) else None
 
+        # Permission management commands are owner-only and bypass normal permission check
+        if command == "trust":
+            if not permissions.is_owner(message.author.id):
+                await self._send_to_channel(
+                    f"❌ {message.author.mention}, only the owner can manage trusted admins.",
+                    command_channel
+                )
+                return
+            if len(args) != 1:
+                await self._send_to_channel("❌ Usage: !trust <user_id>", command_channel)
+                return
+            try:
+                user_id = int(args[0])
+                success, result_msg = permissions.add_trusted_admin(user_id)
+                await self._send_to_channel(result_msg, command_channel)
+            except ValueError:
+                await self._send_to_channel("❌ Invalid user ID. Must be numeric.", command_channel)
+            return
+
+        elif command == "untrust":
+            if not permissions.is_owner(message.author.id):
+                await self._send_to_channel(
+                    f"❌ {message.author.mention}, only the owner can manage trusted admins.",
+                    command_channel
+                )
+                return
+            if len(args) != 1:
+                await self._send_to_channel("❌ Usage: !untrust <user_id>", command_channel)
+                return
+            try:
+                user_id = int(args[0])
+                success, result_msg = permissions.remove_trusted_admin(user_id)
+                await self._send_to_channel(result_msg, command_channel)
+            except ValueError:
+                await self._send_to_channel("❌ Invalid user ID. Must be numeric.", command_channel)
+            return
+
+        elif command == "trusted":
+            if not permissions.is_owner(message.author.id):
+                await self._send_to_channel(
+                    f"❌ {message.author.mention}, only the owner can view trusted admins.",
+                    command_channel
+                )
+                return
+            admins = permissions.get_trusted_admins_list()
+            owner_id = permissions.get_owner_id()
+            if not admins:
+                msg = f"Owner: <@{owner_id}>\nNo trusted admins currently set."
+            else:
+                admin_mentions = "\n".join([f"  • <@{admin_id}>" for admin_id in admins])
+                msg = f"Owner: <@{owner_id}>\nTrusted Admins:\n{admin_mentions}"
+            await self._send_to_channel(msg, command_channel)
+            return
+
+        # All other commands require trusted admin status
+        if not permissions.is_trusted_admin(message.author.id):
+            await self._send_to_channel(
+                f"❌ {message.author.mention}, you don't have permission to use bot commands.",
+                command_channel
+            )
+            return
+
+        # Execute regular bot commands
         if command == "say" and args:
             msg = " ".join(args).strip()
             await self.say(msg, command_channel)
@@ -346,55 +401,22 @@ class BotManagerBotClient:
                 await self._send_to_channel("❌ Usage: !spam <count> <message>", command_channel)
         elif command == "status":
             await self._send_to_channel(self.status(), command_channel)
-        elif command == "trust":
-            # Owner-only command for adding trusted admins
-            if not permissions.is_owner(message.author.id):
-                await self._send_to_channel(
-                    f"❌ {message.author.mention}, only the owner can manage trusted admins.",
-                    command_channel
-                )
-                return
-            if len(args) != 1:
-                await self._send_to_channel("❌ Usage: !trust <user_id>", command_channel)
-                return
-            try:
-                user_id = int(args[0])
-                success, result_msg = permissions.add_trusted_admin(user_id)
-                await self._send_to_channel(result_msg, command_channel)
-            except ValueError:
-                await self._send_to_channel("❌ Invalid user ID. Must be numeric.", command_channel)
-        elif command == "untrust":
-            # Owner-only command for removing trusted admins
-            if not permissions.is_owner(message.author.id):
-                await self._send_to_channel(
-                    f"❌ {message.author.mention}, only the owner can manage trusted admins.",
-                    command_channel
-                )
-                return
-            if len(args) != 1:
-                await self._send_to_channel("❌ Usage: !untrust <user_id>", command_channel)
-                return
-            try:
-                user_id = int(args[0])
-                success, result_msg = permissions.remove_trusted_admin(user_id)
-                await self._send_to_channel(result_msg, command_channel)
-            except ValueError:
-                await self._send_to_channel("❌ Invalid user ID. Must be numeric.", command_channel)
-        elif command == "trusted":
-            # Owner-only command to view trusted admins
-            if not permissions.is_owner(message.author.id):
-                await self._send_to_channel(
-                    f"❌ {message.author.mention}, only the owner can view trusted admins.",
-                    command_channel
-                )
-                return
-            admins = permissions.get_trusted_admins_list()
-            owner_id = permissions.get_owner_id()
-            if not admins:
-                msg = f"Owner: <@{owner_id}>\nNo trusted admins currently set."
-            else:
-                admin_mentions = "\n".join([f"  • <@{admin_id}>" for admin_id in admins])
-                msg = f"Owner: <@{owner_id}>\nTrusted Admins:\n{admin_mentions}"
-            await self._send_to_channel(msg, command_channel)
+        elif command == "help":
+            help_text = (
+                "**Available Commands:**\n"
+                "Bot Commands:\n"
+                "  `!say <message>` - Make all bots repeat the message\n"
+                "  `!follow <target>` - Make all bots follow the target\n"
+                "  `!stop` - Make all bots stop their current action\n"
+                "  `!jump` - Make all bots perform a jump action\n"
+                "  `!spam <count> <message>` - Make all bots spam messages\n"
+                "  `!status` - Show bot connection status\n"
+                "\n"
+                "Owner Only Commands:\n"
+                "  `!trust <user_id>` - Add a user as trusted admin\n"
+                "  `!untrust <user_id>` - Remove a user from trusted admins\n"
+                "  `!trusted` - Show owner and trusted admins list\n"
+            )
+            await self._send_to_channel(help_text, command_channel)
         else:
             await self._send_to_channel(f"❌ Unknown command: {command}. Type !help for available commands.", command_channel)
