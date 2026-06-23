@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import shutil
 import sys
 from pathlib import Path
 
@@ -85,6 +86,12 @@ async def main() -> None:
     """Bootstrap the bot manager application."""
     configure_logging()
     logging.info("Starting Python Multi-Bot Manager...")
+
+    # Render Secret File support
+    if Path("bots.json").exists() and not Path("config/bots.json").exists():
+        Path("config").mkdir(exist_ok=True)
+        shutil.copy("bots.json", "config/bots.json")
+        logging.info("Copied bots.json from root to config/bots.json")
 
     bot_configs = load_bot_configs(CONFIG_PATH)
     bots = [BotManagerBotClient(config) for config in bot_configs]
